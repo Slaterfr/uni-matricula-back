@@ -18,6 +18,7 @@ class Course(SQLModel, table=True):
     code: str = Field(unique=True, index=True, nullable=False)
     name: str = Field(nullable=False)
     credits: int = Field(nullable=False)
+    max_capacity: int = Field(default=30, nullable=False)
     professor_id: Optional[uuid.UUID] = Field(foreign_key="professors.id", nullable=True)
 
     # Relación de vuelta a Professor (Muchos cursos pueden tener el mismo profesor)

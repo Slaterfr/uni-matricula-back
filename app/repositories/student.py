@@ -20,4 +20,19 @@ class StudentRepository(BaseRepository[Student, StudentCreate, StudentUpdate]):
         statement = select(Student).where(Student.user_id == user_id)
         return db.exec(statement).first()
 
+    def get_filtered(self, db: Session, *, search: Optional[str] = None, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> list[Student]:
+        """
+        Retorna estudiantes filtrados opcionalmente por estado y búsqueda de texto (nombre/carnet).
+        """
+        statement = select(Student)
+        if status:
+            statement = statement.where(Student.status == status)
+        if search:
+            search_pattern = f"%{search}%"
+            statement = statement.where(
+                (Student.name.contains(search)) | (Student.carnet.contains(search))
+            )
+        statement = statement.offset(skip).limit(limit)
+        return db.exec(statement).all()
+
 student_repository = StudentRepository(Student)

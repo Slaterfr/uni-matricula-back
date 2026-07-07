@@ -6,11 +6,7 @@ from sqlmodel import SQLModel, Field, Relationship
 if TYPE_CHECKING:
     from app.models.student import Student
     from app.models.professor import Professor
-
-class UserRole(str, Enum):
-    ADMIN = "admin"
-    PROFESSOR = "professor"
-    STUDENT = "student"
+    from app.models.role import Role
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -23,8 +19,11 @@ class User(SQLModel, table=True):
     )
     email: str = Field(unique=True, index=True, nullable=False)
     hashed_password: str = Field(nullable=False)
-    role: UserRole = Field(default=UserRole.STUDENT, nullable=False)
+    role_id: uuid.UUID = Field(foreign_key="roles.id", nullable=False)
     is_active: bool = Field(default=True, nullable=False)
+
+    # Relación de vuelta con Role
+    role: Optional["Role"] = Relationship(back_populates="users")
 
     # Relaciones 1-a-1 usando back_populates
     student: Optional["Student"] = Relationship(

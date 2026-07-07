@@ -1,11 +1,10 @@
 import uuid
 from typing import Optional
 from pydantic import BaseModel, EmailStr
-from app.models.user import UserRole
 
 class UserBase(BaseModel):
     email: EmailStr
-    role: UserRole = UserRole.STUDENT
+    role_id: uuid.UUID
     is_active: bool = True
 
 class UserCreate(UserBase):
@@ -14,13 +13,14 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
-    role: Optional[UserRole] = None
+    role_id: Optional[uuid.UUID] = None
     is_active: Optional[bool] = None
 
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: EmailStr
-    role: UserRole
+    role_id: uuid.UUID
+    role_name: Optional[str] = None
     is_active: bool
 
     class Config:

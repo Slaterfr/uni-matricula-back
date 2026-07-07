@@ -7,11 +7,12 @@ from app.models.enrollment import Enrollment
 from app.repositories.enrollment import enrollment_repository
 from app.repositories.student import student_repository
 from app.repositories.course import course_repository
+from app.repositories.period import period_repository
 from app.schemas.enrollment import EnrollmentCreate, EnrollmentUpdate, EnrollmentResponse
 
 def create_enrollment(db: Session, *, enrollment_in: EnrollmentCreate) -> Enrollment:
     """
-    Registra una matrícula. Valida que existan el estudiante y el curso, y que no exista duplicado.
+    Registra una matrícula. Valida que existan el estudiante, el curso y el período, y que no exista duplicado y queden cupos.
     """
     # 1. Validar estudiante
     student = student_repository.get(db, id=enrollment_in.student_id)
@@ -29,23 +30,39 @@ def create_enrollment(db: Session, *, enrollment_in: EnrollmentCreate) -> Enroll
             detail="Curso no encontrado."
         )
 
-    # 3. Validar duplicados de matrícula en el mismo periodo
+    # 3. Validar período
+    period_db = period_repository.get(db, id=enrollment_in.period_id)
+    if not period_db:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Período académico no encontrado."
+        )
+
+    # 4. Validar duplicados de matrícula en el mismo periodo
     existing = enrollment_repository.get_by_student_and_course(
         db,
         student_id=enrollment_in.student_id,
         course_id=enrollment_in.course_id,
-        period=enrollment_in.period
+        period_id=enrollment_in.period_id
     )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"El estudiante ya está matriculado en el curso {course.name} para el período {enrollment_in.period}."
+            detail=f"El estudiante ya está matriculado en el curso {course.name} para el período {period_db.name}."
+        )
+
+    # 5. Validar cupo disponible
+    current_enrollments_count = len([e for e in course.enrollments if e.period_id == enrollment_in.period_id])
+    if current_enrollments_count >= course.max_capacity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"El curso {course.name} no cuenta con cupos disponibles para el período {period_db.name} (Capacidad: {course.max_capacity})."
         )
 
     enrollment_db = Enrollment(
         student_id=enrollment_in.student_id,
         course_id=enrollment_in.course_id,
-        period=enrollment_in.period
+        period_id=enrollment_in.period_id
     )
     db.add(enrollment_db)
     db.commit()
@@ -78,7 +95,7 @@ def update_enrollment(db: Session, enrollment_id: uuid.UUID, enrollment_in: Enro
 
     student_id = enrollment_in.student_id or enrollment.student_id
     course_id = enrollment_in.course_id or enrollment.course_id
-    period = enrollment_in.period or enrollment.period
+    period_id = enrollment_in.period_id or enrollment.period_id
 
     if enrollment_in.student_id is not None and enrollment_in.student_id != enrollment.student_id:
         if not student_repository.get(db, id=enrollment_in.student_id):
@@ -94,17 +111,24 @@ def update_enrollment(db: Session, enrollment_id: uuid.UUID, enrollment_in: Enro
                 detail="Curso no encontrado."
             )
 
+    if enrollment_in.period_id is not None and enrollment_in.period_id != enrollment.period_id:
+        if not period_repository.get(db, id=enrollment_in.period_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Período académico no encontrado."
+            )
+
     # Validar duplicado si cambia algo
     if (enrollment_in.student_id is not None or
         enrollment_in.course_id is not None or
-        enrollment_in.period is not None):
+        enrollment_in.period_id is not None):
         existing = enrollment_repository.get_by_student_and_course(
-            db, student_id=student_id, course_id=course_id, period=period
+            db, student_id=student_id, course_id=course_id, period_id=period_id
         )
         if existing and existing.id != enrollment.id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"El estudiante ya está matriculado en este curso para el período {period}."
+                detail="El estudiante ya está matriculado en este curso para el período seleccionado."
             )
 
     enrollment_data = enrollment_in.model_dump(exclude_unset=True)
@@ -129,6 +153,7 @@ def to_enrollment_response(enrollment: Enrollment) -> EnrollmentResponse:
     """
     Formatea el objeto Matrícula al esquema EnrollmentResponse.
     """
+    period_name = enrollment.period.name if enrollment.period else None
     return EnrollmentResponse(
         id=enrollment.id,
         student_id=enrollment.student_id,
@@ -137,5 +162,7 @@ def to_enrollment_response(enrollment: Enrollment) -> EnrollmentResponse:
         course_id=enrollment.course_id,
         course_name=enrollment.course.name,
         course_code=enrollment.course.code,
-        period=enrollment.period
+        period_id=enrollment.period_id,
+        period=period_name,
+        grade=enrollment.grade
     )

@@ -32,6 +32,7 @@ def create_course(db: Session, *, course_in: CourseCreate) -> Course:
         code=course_in.code,
         name=course_in.name,
         credits=course_in.credits,
+        max_capacity=course_in.max_capacity,
         professor_id=course_in.professor_id
     )
     db.add(course_db)
@@ -90,6 +91,7 @@ def update_course(db: Session, course_id: uuid.UUID, course_in: CourseUpdate) ->
     db.refresh(course)
     return course
 
+
 def delete_course(db: Session, course_id: uuid.UUID) -> Course:
     """
     Elimina un curso.
@@ -109,6 +111,7 @@ def to_course_response(course: Course) -> CourseResponse:
         code=course.code,
         name=course.name,
         credits=course.credits,
+        max_capacity=course.max_capacity,
         professor_id=course.professor_id,
         professor_name=prof_name
     )

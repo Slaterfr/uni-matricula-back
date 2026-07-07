@@ -66,12 +66,13 @@ def update_professor_detail(
     professor = professor_service.get_professor_by_id(db, professor_id=professor_id)
     
     # Restricción: Profesores modifican sus propios datos, administradores cualquiera.
-    if current_user.role.value == "professor" and professor.user_id != current_user.id:
+    role_name = current_user.role.name if current_user.role else "professor"
+    if role_name == "professor" and professor.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para modificar a otro profesor."
         )
-    elif current_user.role.value == "student":
+    elif role_name == "student":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Los estudiantes no tienen permisos de modificación."

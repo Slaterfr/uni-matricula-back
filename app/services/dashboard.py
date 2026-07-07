@@ -4,12 +4,13 @@ from app.models.student import Student
 from app.models.professor import Professor
 from app.models.course import Course
 from app.models.enrollment import Enrollment
-from app.schemas.dashboard import DashboardResponse, ActivityItem
+from app.models.period import Period
+from app.schemas.dashboard import DashboardResponse, ActivityItem, PeriodStatItem
 
 def get_dashboard_stats(db: Session) -> DashboardResponse:
     """
-    Recopila las estadísticas globales (conteos) y la actividad reciente
-    de estudiantes, profesores y matrículas.
+    Recopila las estadísticas globales (conteos), la actividad reciente
+    de estudiantes, profesores y matrículas, y el desglose de matrículas por período.
     """
     # 1. Obtener conteos rápidos de base de datos
     students_count = db.scalar(select(func.count()).select_from(Student)) or 0
@@ -17,23 +18,31 @@ def get_dashboard_stats(db: Session) -> DashboardResponse:
     courses_count = db.scalar(select(func.count()).select_from(Course)) or 0
     enrollments_count = db.scalar(select(func.count()).select_from(Enrollment)) or 0
 
+    # 2. Obtener estadísticas por período académico
+    periods = db.exec(select(Period)).all()
+    enrollments_by_period = []
+    for p in periods:
+        count = db.scalar(select(func.count(Enrollment.id)).where(Enrollment.period_id == p.id)) or 0
+        enrollments_by_period.append(PeriodStatItem(period_name=p.name, enrollments_count=count))
+
     recent_activity: List[ActivityItem] = []
 
-    # 2. Matrículas recientes (últimas 5)
+    # 3. Matrículas recientes (últimas 5)
     enrollments_statement = select(Enrollment).order_by(Enrollment.created_at.desc()).limit(5)
     recent_enrollments = db.exec(enrollments_statement).all()
     for enr in recent_enrollments:
         if enr.student and enr.course:
+            period_name = enr.period.name if enr.period else "N/A"
             recent_activity.append(
                 ActivityItem(
                     id=f"enr-{enr.id}",
                     type="enrollment",
-                    description=f"Matrícula de {enr.student.name} en el curso {enr.course.name} ({enr.period})",
+                    description=f"Matrícula de {enr.student.name} en el curso {enr.course.name} ({period_name})",
                     timestamp=enr.created_at
                 )
             )
 
-    # 3. Estudiantes recientes (últimos 5)
+    # 4. Estudiantes recientes (últimos 5)
     students_statement = select(Student).order_by(Student.created_at.desc()).limit(5)
     recent_students = db.exec(students_statement).all()
     for stud in recent_students:
@@ -46,7 +55,7 @@ def get_dashboard_stats(db: Session) -> DashboardResponse:
             )
         )
 
-    # 4. Profesores recientes (últimos 5)
+    # 5. Profesores recientes (últimos 5)
     professors_statement = select(Professor).order_by(Professor.created_at.desc()).limit(5)
     recent_professors = db.exec(professors_statement).all()
     for prof in recent_professors:
@@ -68,5 +77,6 @@ def get_dashboard_stats(db: Session) -> DashboardResponse:
         professors_count=professors_count,
         courses_count=courses_count,
         enrollments_count=enrollments_count,
-        recent_activity=recent_activity
+        recent_activity=recent_activity,
+        enrollments_by_period=enrollments_by_period
     )

@@ -6,6 +6,7 @@ from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, func
 if TYPE_CHECKING:
     from app.models.user import User
     from app.models.enrollment import Enrollment
+    from app.models.payment import Payment
 
 class Student(SQLModel, table=True):
     __tablename__ = "students"
@@ -34,6 +35,12 @@ class Student(SQLModel, table=True):
 
     # Relación 1-a-muchos con Enrollment
     enrollments: List["Enrollment"] = Relationship(
+        back_populates="student",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    # Relación 1-a-muchos con Payment
+    payments: List["Payment"] = Relationship(
         back_populates="student",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )

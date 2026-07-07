@@ -29,7 +29,7 @@ def create_new_enrollment(
     Profesores no tienen acceso.
     """
     # Si es un estudiante, validar que se matricule a sí mismo
-    if current_user.role.value == "student":
+    if current_user.role.name == "student":
         student = student_repository.get_by_user_id(db, user_id=current_user.id)
         if not student or student.id != enrollment_in.student_id:
             raise HTTPException(
@@ -42,7 +42,7 @@ def create_new_enrollment(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Tu cuenta de estudiante está inactiva y no puedes matricularte."
             )
-    elif current_user.role.value == "professor":
+    elif current_user.role.name == "professor":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Los profesores no están autorizados para registrar matrículas."
@@ -63,7 +63,7 @@ def read_enrollments(
     Administradores y Profesores ven todas.
     Estudiantes solo ven sus propias matrículas.
     """
-    if current_user.role.value == "student":
+    if current_user.role.name == "student":
         student = student_repository.get_by_user_id(db, user_id=current_user.id)
         if not student:
             return []
@@ -86,7 +86,7 @@ def read_enrollment_detail(
     """
     enrollment = enrollment_service.get_enrollment_by_id(db, enrollment_id=enrollment_id)
     
-    if current_user.role.value == "student":
+    if current_user.role.name == "student":
         student = student_repository.get_by_user_id(db, user_id=current_user.id)
         if not student or enrollment.student_id != student.id:
             raise HTTPException(
@@ -121,14 +121,14 @@ def delete_enrollment_by_id(
     """
     enrollment = enrollment_service.get_enrollment_by_id(db, enrollment_id=enrollment_id)
     
-    if current_user.role.value == "student":
+    if current_user.role.name == "student":
         student = student_repository.get_by_user_id(db, user_id=current_user.id)
         if not student or enrollment.student_id != student.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Solo puedes eliminar tus propias matrículas."
             )
-    elif current_user.role.value == "professor":
+    elif current_user.role.name == "professor":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Los profesores no pueden desinscribir matrículas."

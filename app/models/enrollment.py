@@ -6,6 +6,7 @@ from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, func
 if TYPE_CHECKING:
     from app.models.student import Student
     from app.models.course import Course
+    from app.models.period import Period
 
 class Enrollment(SQLModel, table=True):
     __tablename__ = "enrollments"
@@ -18,7 +19,8 @@ class Enrollment(SQLModel, table=True):
     )
     student_id: uuid.UUID = Field(foreign_key="students.id", nullable=False)
     course_id: uuid.UUID = Field(foreign_key="courses.id", nullable=False)
-    period: str = Field(nullable=False) # e.g. "2026-I"
+    period_id: uuid.UUID = Field(foreign_key="periods.id", nullable=False)
+    grade: Optional[float] = Field(default=None, nullable=True)
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -30,3 +32,4 @@ class Enrollment(SQLModel, table=True):
     # Relaciones de vuelta
     student: Optional["Student"] = Relationship(back_populates="enrollments")
     course: Optional["Course"] = Relationship(back_populates="enrollments")
+    period: Optional["Period"] = Relationship(back_populates="enrollments")

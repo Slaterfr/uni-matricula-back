@@ -4,10 +4,11 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 
 from app.core.security import get_password_hash
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.professor import Professor
 from app.repositories.user import user_repository
 from app.repositories.professor import professor_repository
+from app.repositories.role import role_repository
 from app.schemas.professor import ProfessorCreate, ProfessorUpdate, ProfessorResponse
 
 def create_professor(db: Session, *, professor_in: ProfessorCreate) -> Professor:
@@ -22,11 +23,19 @@ def create_professor(db: Session, *, professor_in: ProfessorCreate) -> Professor
             detail="El correo electrónico ya está registrado.",
         )
 
-    # 2. Crear usuario
+    # 2. Obtener el rol de profesor de la BD
+    role_db = role_repository.get_by_name(db, name="professor")
+    if not role_db:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Rol 'professor' no configurado en el sistema."
+        )
+
+    # Crear usuario
     user_db = User(
         email=professor_in.email,
         hashed_password=get_password_hash("Temporal123!"),
-        role=UserRole.PROFESSOR,
+        role_id=role_db.id,
         is_active=True
     )
     db.add(user_db)

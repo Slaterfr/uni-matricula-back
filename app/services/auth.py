@@ -32,17 +32,18 @@ def authenticate_user(db: Session, *, login_data: LoginRequest) -> Token:
     
     # Resolver profile_id según el rol utilizando las relaciones del modelo User
     profile_id = None
-    if user.role.value == "student" and user.student:
+    role_name = user.role.name if user.role else "student"
+    if role_name == "student" and user.student:
         profile_id = user.student.id
-    elif user.role.value == "professor" and user.professor:
+    elif role_name == "professor" and user.professor:
         profile_id = user.professor.id
 
     # El payload del JWT llevará el email (sub) y el rol
-    access_token = create_access_token(subject=user.email, role=user.role.value)
+    access_token = create_access_token(subject=user.email, role=role_name)
     
     return Token(
         access_token=access_token,
-        role=user.role.value,
+        role=role_name,
         email=user.email,
         user_id=user.id,
         profile_id=profile_id

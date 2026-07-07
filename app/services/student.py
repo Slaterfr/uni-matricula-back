@@ -4,11 +4,13 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 
 from app.core.security import get_password_hash
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.student import Student
 from app.repositories.user import user_repository
 from app.repositories.student import student_repository
+from app.repositories.role import role_repository
 from app.schemas.student import StudentCreate, StudentUpdate, StudentResponse
+from typing import Optional
 
 def create_student(db: Session, *, student_in: StudentCreate) -> Student:
     """
@@ -29,11 +31,19 @@ def create_student(db: Session, *, student_in: StudentCreate) -> Student:
             detail="El carnet de estudiante ya está registrado.",
         )
 
-    # 3. Crear registro del usuario
+    # 3. Obtener el rol de estudiante de la BD
+    role_db = role_repository.get_by_name(db, name="student")
+    if not role_db:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Rol 'student' no configurado en el sistema."
+        )
+
+    # Crear registro del usuario
     user_db = User(
         email=student_in.email,
         hashed_password=get_password_hash(student_in.carnet),
-        role=UserRole.STUDENT,
+        role_id=role_db.id,
         is_active=True
     )
     db.add(user_db)
@@ -64,11 +74,11 @@ def get_student_by_id(db: Session, student_id: uuid.UUID) -> Student:
         )
     return student
 
-def get_all_students(db: Session, skip: int = 0, limit: int = 100) -> List[Student]:
+def get_all_students(db: Session, *, search: Optional[str] = None, status: Optional[str] = None, skip: int = 0, limit: int = 100) -> List[Student]:
     """
-    Retorna la lista de todos los estudiantes.
+    Retorna la lista de todos los estudiantes filtrados.
     """
-    return student_repository.get_multi(db, skip=skip, limit=limit)
+    return student_repository.get_filtered(db, search=search, status=status, skip=skip, limit=limit)
 
 def update_student(db: Session, student_id: uuid.UUID, student_in: StudentUpdate) -> Student:
     """

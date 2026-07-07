@@ -3,17 +3,18 @@ from typing import Optional
 from pydantic import BaseModel
 
 class EnrollmentBase(BaseModel):
-    period: str
+    period_id: uuid.UUID
 
 class EnrollmentCreate(BaseModel):
     student_id: uuid.UUID
     course_id: uuid.UUID
-    period: str
+    period_id: uuid.UUID
 
 class EnrollmentUpdate(BaseModel):
     student_id: Optional[uuid.UUID] = None
     course_id: Optional[uuid.UUID] = None
-    period: Optional[str] = None
+    period_id: Optional[uuid.UUID] = None
+    grade: Optional[float] = None
 
 class EnrollmentResponse(BaseModel):
     id: uuid.UUID
@@ -23,7 +24,9 @@ class EnrollmentResponse(BaseModel):
     course_id: uuid.UUID
     course_name: str
     course_code: str
-    period: str
+    period_id: uuid.UUID
+    period: Optional[str] = None
+    grade: Optional[float] = None
 
     class Config:
         from_attributes = True

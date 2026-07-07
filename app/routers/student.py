@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
@@ -30,15 +30,17 @@ def create_new_student(
 
 @router.get("", response_model=List[StudentResponse], dependencies=[staff_required])
 def read_students(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
     """
-    Obtiene la lista de estudiantes.
+    Obtiene la lista de estudiantes filtrada.
     Accesible por administradores y profesores.
     """
-    students = student_service.get_all_students(db, skip=skip, limit=limit)
+    students = student_service.get_all_students(db, search=search, status=status, skip=skip, limit=limit)
     return [student_service.to_student_response(s) for s in students]
 
 @router.get("/{student_id}", response_model=StudentResponse)
@@ -54,7 +56,7 @@ def read_student_detail(
     student = student_service.get_student_by_id(db, student_id=student_id)
     
     # Si es rol estudiante, verificar que solo pueda ver su propia información
-    if current_user.role.value == "student" and student.user_id != current_user.id:
+    if current_user.role and current_user.role.name == "student" and student.user_id != current_user.id:
         from fastapi import HTTPException
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -78,13 +80,14 @@ def update_student_detail(
     
     # Restricción: Estudiantes solo modifican sus propios datos, administradores cualquiera.
     # Profesores no pueden modificar estudiantes.
-    if current_user.role.value == "student" and student.user_id != current_user.id:
+    role_name = current_user.role.name if current_user.role else "student"
+    if role_name == "student" and student.user_id != current_user.id:
         from fastapi import HTTPException
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para modificar a otro estudiante."
         )
-    elif current_user.role.value == "professor":
+    elif role_name == "professor":
         from fastapi import HTTPException
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
