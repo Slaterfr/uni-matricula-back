@@ -29,7 +29,7 @@ def get_dashboard_stats(db: Session) -> DashboardResponse:
         roman_to_num = {"I": 1, "II": 2, "III": 3, "IV": 4}
         parts = item.period_name.strip().split()
         if len(parts) >= 2:
-            roman, year_str = parts[0], parts[1]
+            roman, year_str = parts[0], parts[-1]
             try:
                 year = int(year_str)
                 num = roman_to_num.get(roman, 0)
