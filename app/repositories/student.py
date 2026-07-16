@@ -1,6 +1,6 @@
 from typing import Optional
 import uuid
-from sqlmodel import Session, select
+from sqlmodel import Session, select, col
 from app.repositories.base import BaseRepository
 from app.models.student import Student
 from app.schemas.student import StudentCreate, StudentUpdate
@@ -30,7 +30,7 @@ class StudentRepository(BaseRepository[Student, StudentCreate, StudentUpdate]):
         if search:
             search_pattern = f"%{search}%"
             statement = statement.where(
-                (Student.name.contains(search)) | (Student.carnet.contains(search))
+                col(Student.name).ilike(search_pattern) | col(Student.carnet).ilike(search_pattern)
             )
         statement = statement.offset(skip).limit(limit)
         return db.exec(statement).all()

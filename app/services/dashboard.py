@@ -25,6 +25,21 @@ def get_dashboard_stats(db: Session) -> DashboardResponse:
         count = db.scalar(select(func.count(Enrollment.id)).where(Enrollment.period_id == p.id)) or 0
         enrollments_by_period.append(PeriodStatItem(period_name=p.name, enrollments_count=count))
 
+    def parse_period_name(item: PeriodStatItem):
+        roman_to_num = {"I": 1, "II": 2, "III": 3, "IV": 4}
+        parts = item.period_name.strip().split()
+        if len(parts) >= 2:
+            roman, year_str = parts[0], parts[1]
+            try:
+                year = int(year_str)
+                num = roman_to_num.get(roman, 0)
+                return (year, num)
+            except ValueError:
+                return (0, 0)
+        return (0, 0)
+    
+    enrollments_by_period.sort(key=parse_period_name)
+
     recent_activity: List[ActivityItem] = []
 
     # 3. Matrículas recientes (últimas 5)

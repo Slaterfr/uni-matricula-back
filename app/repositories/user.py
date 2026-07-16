@@ -9,7 +9,7 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         """
         Busca un usuario por su dirección de correo electrónico.
         """
-        statement = select(User).where(User.email == email)
+        statement = select(User).where(User.email == email.lower().strip())
         return db.exec(statement).first()
 
 user_repository = UserRepository(User)
