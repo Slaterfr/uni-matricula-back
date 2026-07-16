@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, func
 
@@ -22,6 +22,7 @@ class Enrollment(SQLModel, table=True):
     period_id: uuid.UUID = Field(foreign_key="periods.id", nullable=False)
     grade: Optional[float] = Field(default=None, nullable=True)
     created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(
             DateTime(timezone=True),
             server_default=func.now(),

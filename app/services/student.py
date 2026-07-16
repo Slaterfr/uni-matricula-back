@@ -24,14 +24,22 @@ def create_student(db: Session, *, student_in: StudentCreate) -> Student:
             detail="El correo electrónico ya está registrado.",
         )
     
-    # 2. Validar que el carnet no esté registrado
+    # 2. Validar formato de carnet (cédula de 9 dígitos numéricos)
+    import re
+    if not re.match(r"^\d{9}$", student_in.carnet):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La cédula debe contener exactamente 9 dígitos numéricos, sin guiones ni espacios (ej: 102340567).",
+        )
+    
+    # 3. Validar que el carnet no esté registrado
     if student_repository.get_by_carnet(db, carnet=student_in.carnet):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El carnet de estudiante ya está registrado.",
         )
 
-    # 3. Obtener el rol de estudiante de la BD
+    # 4. Obtener el rol de estudiante de la BD
     role_db = role_repository.get_by_name(db, name="student")
     if not role_db:
         raise HTTPException(
@@ -49,11 +57,12 @@ def create_student(db: Session, *, student_in: StudentCreate) -> Student:
     db.add(user_db)
     db.flush()  # Obtener el ID generado para el usuario
 
-    # 4. Crear el estudiante enlazado a ese usuario
+    # 5. Crear el estudiante enlazado a ese usuario (nombre normalizado con iniciales en mayúscula)
+    normalized_name = " ".join(word.capitalize() for word in student_in.name.strip().split())
     student_db = Student(
         user_id=user_db.id,
         carnet=student_in.carnet,
-        name=student_in.name,
+        name=normalized_name,
         phone=student_in.phone,
         status="active"
     )
@@ -101,6 +110,8 @@ def update_student(db: Session, student_id: uuid.UUID, student_in: StudentUpdate
     # Actualizar los demás campos del estudiante
     student_data = student_in.model_dump(exclude={"email"}, exclude_unset=True)
     for field, value in student_data.items():
+        if field == "name" and value is not None:
+            value = " ".join(word.capitalize() for word in value.strip().split())
         setattr(student, field, value)
     
     db.add(student)

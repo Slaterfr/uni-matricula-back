@@ -25,6 +25,7 @@ class Payment(SQLModel, table=True):
     amount: float = Field(nullable=False)
     status: PaymentStatus = Field(default=PaymentStatus.PENDING, nullable=False)
     date: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(
             DateTime(timezone=True),
             server_default=func.now(),

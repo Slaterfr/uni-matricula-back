@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, func
 
@@ -23,6 +23,7 @@ class Student(SQLModel, table=True):
     phone: str = Field(nullable=False)
     status: str = Field(default="active", nullable=False) # e.g. "active", "inactive"
     created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(
             DateTime(timezone=True),
             server_default=func.now(),
